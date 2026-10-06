@@ -165,6 +165,53 @@ These changes affect the Pro Controller 2 Bluetooth uinput gamepad.
 The NSO GameCube and Joy-Con 2 mappings and the DSU motion server's original button layout are unchanged. DSU has no
 standard GL/GR button slots; use uinput for the extra buttons and DSU for motion.
 
+### Steam rear-button compatibility mode (experimental)
+
+If Steam detects the Pro Controller 2 but does not show GL/GR in its layout
+editor, try the optional Elite identity workaround. It presents only the Pro
+virtual gamepad as a USB Xbox Elite Series 2 (`045e:0b00`) and reports GR/GL
+using xpad's upper-right/upper-left paddle codes (`BTN_TRIGGER_HAPPY5` / `7`).
+The physical connection remains Bluetooth; X/Y, sticks, triggers, and the
+Bluetooth rumble implementation are retained. Steam may use Xbox labels and
+create a fresh layout for this virtual identity. Existing saved emulator
+device selections may need updating. Use DSU for motion in this mode.
+
+This workaround is covered by simulated input tests, but Steam's paddle UI
+still needs confirmation on real hardware; it is not enabled by default.
+
+Fully exit Steam, then enable the mode:
+
+```bash
+mkdir -p ~/.config/systemd/user/nso-gc.service.d
+cat > ~/.config/systemd/user/nso-gc.service.d/steam-elite.conf <<'EOF'
+[Service]
+Environment=NGC_STEAM_ELITE=1
+EOF
+systemctl --user daemon-reload
+systemctl --user restart nso-gc.service
+```
+
+Wake the controller, regenerate the SDL mapping for the new identity, and
+launch Steam with that file (requires PySDL2 in `.venv312`):
+
+```bash
+cd ~/nso-gc-bazzite
+mkdir -p ~/.config/nso-gc
+.venv312/bin/python tools/sdl_guid.py \
+  | sed -n 's/^     mapping: //p' \
+  > ~/.config/nso-gc/steam-gamecontrollerdb.txt
+cat ~/.config/nso-gc/steam-gamecontrollerdb.txt
+SDL_GAMECONTROLLERCONFIG_FILE="$HOME/.config/nso-gc/steam-gamecontrollerdb.txt" steam
+```
+
+The printed Pro mapping should include `[Steam Elite]`, `paddle1:b15` (GR),
+and `paddle2:b16` (GL). If no mapping prints, do not launch with an empty file;
+run `tools/sdl_guid.py` without redirection and inspect its output.
+
+To revert, remove only `~/.config/systemd/user/nso-gc.service.d/steam-elite.conf`,
+reload systemd, restart the service, wake the controller, and regenerate the
+SDL mapping. The original Nintendo virtual identity will return.
+
 ## Gyro / motion (DSU)
 
 When the bridge runs it starts a DSU/cemuhook server on `127.0.0.1:26760`

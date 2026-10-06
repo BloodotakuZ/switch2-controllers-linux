@@ -70,6 +70,44 @@ class ProButtonsTest(unittest.TestCase):
         self.assertEqual(gc['C'], e.BTN_SELECT)
         self.assertNotIn('GL', gc)
 
+    def test_steam_elite_identity_and_paddle_events(self):
+        with patch('ngc.gamepad.UInput') as ui, patch('ngc.gamepad.threading.Thread'):
+            pad = SwitchGamepad(name='Pro Controller 2 (P1)',
+                                product=P.PRO_CONTROLLER2_PID, steam_elite=True)
+            caps = ui.call_args.args[0]
+            identity = ui.call_args.kwargs
+        self.assertEqual((identity['vendor'], identity['product'], identity['bustype']),
+                         (0x045e, 0x0b00, e.BUS_USB))
+        self.assertIn('[Steam Elite]', identity['name'])
+        self.assertEqual(pad.button_map['X'], e.BTN_NORTH)
+        self.assertEqual(pad.button_map['Y'], e.BTN_WEST)
+        pad.update(0, (0, 0), (0, 0), 0, 0)
+        pad.ui.reset_mock()
+        pad.update(0x03000000, (0, 0), (0, 0), 0, 0)
+        pad.ui.write.assert_any_call(e.EV_KEY, e.BTN_TRIGGER_HAPPY5, 1)
+        pad.ui.write.assert_any_call(e.EV_KEY, e.BTN_TRIGGER_HAPPY7, 1)
+        self.assertEqual(pad.ui.write.call_count, 2)
+        pad.ui.reset_mock()
+        pad.update(0, (0, 0), (0, 0), 0, 0)
+        pad.ui.write.assert_any_call(e.EV_KEY, e.BTN_TRIGGER_HAPPY5, 0)
+        pad.ui.write.assert_any_call(e.EV_KEY, e.BTN_TRIGGER_HAPPY7, 0)
+        fields = dict(x.split(':', 1) for x in fix_pro_mapping(
+            'guid,Pro Controller 2 (P1) [Steam Elite],dpup:h0.1,'
+        ).split(',')[2:] if ':' in x)
+        keys = caps[e.EV_KEY]
+        self.assertEqual(fields['paddle1'], f'b{keys.index(e.BTN_TRIGGER_HAPPY5)}')
+        self.assertEqual(fields['paddle2'], f'b{keys.index(e.BTN_TRIGGER_HAPPY7)}')
+
+    def test_elite_mode_does_not_change_other_products(self):
+        for pid in (P.NSO_GAMECUBE_PID, P.JOYCON2_LEFT_PID, P.JOYCON2_RIGHT_PID):
+            with patch('ngc.gamepad.UInput') as ui, patch('ngc.gamepad.threading.Thread'):
+                pad = SwitchGamepad(product=pid, steam_elite=True)
+                identity = ui.call_args.kwargs
+            self.assertEqual(identity['vendor'], P.NINTENDO_VENDOR_ID)
+            self.assertEqual(identity['product'], pid)
+            self.assertEqual(identity['bustype'], e.BUS_BLUETOOTH)
+            self.assertNotIn('GL', pad.button_map)
+
     def test_sdl_mapping_matches_actual_key_and_axis_order(self):
         mapping = fix_pro_mapping('guid,Pro Controller 2,dpup:h0.1,')
         fields = dict(x.split(':', 1) for x in mapping.split(',')[2:] if ':' in x)

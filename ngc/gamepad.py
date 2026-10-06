@@ -110,8 +110,15 @@ class SwitchGamepad:
         button_map=None,
         product: int = P.NSO_GAMECUBE_PID,
         mac: str = "",
+        steam_elite: bool = False,
     ):
-        self.button_map = button_map or DEFAULT_BUTTON_MAP
+        self.button_map = dict(button_map or button_map_for_product(product))
+        # Opt-in Steam classification workaround, not a Bluetooth identity change.
+        # Match xpad's upper-right / upper-left Elite paddle key codes.
+        steam_elite = steam_elite and product == P.PRO_CONTROLLER2_PID
+        if steam_elite:
+            self.button_map.update(GL=e.BTN_TRIGGER_HAPPY7, GR=e.BTN_TRIGGER_HAPPY5)
+            name += " [Steam Elite]"
         keys = sorted(set(self.button_map.values()))
 
         capabilities = {
@@ -133,10 +140,10 @@ class SwitchGamepad:
         self.ui = UInput(
             capabilities,
             name=name,
-            vendor=P.NINTENDO_VENDOR_ID,
-            product=product,
+            vendor=0x045E if steam_elite else P.NINTENDO_VENDOR_ID,
+            product=0x0B00 if steam_elite else product,
             version=0x0100,
-            bustype=e.BUS_BLUETOOTH,
+            bustype=e.BUS_USB if steam_elite else e.BUS_BLUETOOTH,
             phys=phys,
         )
         logger.info("created virtual gamepad: %s", self.ui.device.path if self.ui.device else name)

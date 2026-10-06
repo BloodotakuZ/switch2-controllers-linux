@@ -209,7 +209,11 @@ def fix_pro_mapping(mapping: str) -> str:
         "rightstick:b14",
         "hint:SDL_GAMECONTROLLER_USE_BUTTON_LABELS:=1",
     ]
-    buttons.extend(["paddle1:b16", "paddle2:b15"])
+    if "[Steam Elite]" in name:
+        # Elite key ordering is GR (HAPPY5), then GL (HAPPY7).
+        buttons.extend(["paddle1:b15", "paddle2:b16"])
+    else:
+        buttons.extend(["paddle1:b16", "paddle2:b15"])
     axis_tokens = list(NGC_PRO_AXES[:-1]) + hat_tokens + [NGC_PRO_AXES[-1]]
     return ",".join([guid, name, *buttons, *axis_tokens])
 

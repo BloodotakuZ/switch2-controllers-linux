@@ -558,6 +558,7 @@ class _Worker:
             button_map=self.config_button_map(pid),
             product=pid,
             mac=self.entry.mac,
+            steam_elite=os.environ.get("NGC_STEAM_ELITE", "").lower() in {"1", "true", "yes", "on"},
         )
         self.motion = MotionEvdev(name, self.entry.mac, product=pid)
         self._gamepad_product = pid

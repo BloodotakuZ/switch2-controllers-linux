@@ -170,6 +170,54 @@ def fix_gamecube_mapping(mapping: str) -> str:
 NGC_PRO_AXES = (
     "leftx:a0",
     "lefty:a1",
+    "lefttrigger:a2",
+    "rightx:a3",
+    "righty:a4",
+    "righttrigger:a5",
+    "platform:Linux",
+)
+
+
+def fix_pro_mapping(mapping: str) -> str:
+    """Build gamecontrollerdb line for ngc Pro Controller 2 uinput pads.
+
+    Face buttons use the swapped X/Y positions (X=NORTH, Y=WEST) per
+    ngc/gamepad.py PRO_BUTTON_MAP sorted evdev key order."""
+    parts = mapping.split(",")
+    if len(parts) < 2:
+        return mapping
+    guid, name = parts[0], parts[1]
+    hat_tokens = [
+        token for token in parts[2:]
+        if token.split(":", 1)[0] in _KEEP_HAT_KEYS
+    ]
+    # Sorted evdev keys: A,B,C,X,Y,Capture,L,R,ZL,ZR,Minus,Plus,Home,L3,R3,
+    # GL,GR (Pro only). Keep the requested X/Y swap in the SDL mapping too.
+    buttons = [
+        "a:b0",
+        "b:b1",
+        "x:b4",
+        "y:b3",
+        "back:b10",
+        "start:b11",
+        "guide:b12",
+        "misc1:b2",
+        "misc2:b5",
+        "leftshoulder:b6",
+        "rightshoulder:b7",
+        "leftstick:b13",
+        "rightstick:b14",
+        "hint:SDL_GAMECONTROLLER_USE_BUTTON_LABELS:=1",
+    ]
+    buttons.extend(["paddle1:b16", "paddle2:b15"])
+    axis_tokens = list(NGC_PRO_AXES[:-1]) + hat_tokens + [NGC_PRO_AXES[-1]]
+    return ",".join([guid, name, *buttons, *axis_tokens])
+
+
+# Keep the experimental Joy-Con integration unchanged in this Pro-only fork.
+NGC_JOYCON_AXES = (
+    "leftx:a0",
+    "lefty:a1",
     "rightx:a2",
     "righty:a3",
     "lefttrigger:a4",
@@ -178,8 +226,8 @@ NGC_PRO_AXES = (
 )
 
 
-def fix_pro_mapping(mapping: str) -> str:
-    """Build gamecontrollerdb line for ngc Pro / Joy-Con 2 uinput pads.
+def fix_joycon_mapping(mapping: str) -> str:
+    """Build gamecontrollerdb line for experimental ngc Joy-Con 2 uinput pads.
 
     Face buttons use semantic Nintendo positions (A=SOUTH, B=EAST, …) per
     ngc/gamepad.py PRO_BUTTON_MAP sorted evdev key order."""
@@ -207,7 +255,7 @@ def fix_pro_mapping(mapping: str) -> str:
         "rightstick:b13",
         "hint:SDL_GAMECONTROLLER_USE_BUTTON_LABELS:=1",
     ]
-    axis_tokens = list(NGC_PRO_AXES[:-1]) + hat_tokens + [NGC_PRO_AXES[-1]]
+    axis_tokens = list(NGC_JOYCON_AXES[:-1]) + hat_tokens + [NGC_JOYCON_AXES[-1]]
     return ",".join([guid, name, *buttons, *axis_tokens])
 
 
@@ -217,8 +265,10 @@ def mapping_for_pad(name: str, mapping: str | None) -> str | None:
     low = name.lower()
     if "gamecube" in low:
         return fix_gamecube_mapping(mapping)
-    if "pro controller 2" in low or "joy-con 2" in low:
+    if "pro controller 2" in low:
         return fix_pro_mapping(mapping)
+    if "joy-con 2" in low:
+        return fix_joycon_mapping(mapping)
     return mapping
 
 

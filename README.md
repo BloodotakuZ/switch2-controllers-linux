@@ -30,6 +30,10 @@ fully in user space — no kernel modules, no root.
 - **Gyro everywhere**: an embedded **DSU (cemuhook) UDP server** on
   `127.0.0.1:26760` feeds accel/gyro to Dolphin, Cemu, Ryujinx, etc.
 - **Analog triggers + C-stick** on the NSO GameCube pad; calibrated sticks.
+- **Bluetooth Pro Controller 2 X/Y swap**: physical X reports `BTN_NORTH`
+  (gamepad Y), and physical Y reports `BTN_WEST` (gamepad X).
+- **Independent extra buttons**: Pro Controller 2 GL/GR rear buttons are
+  exposed as extra gamepad inputs. C and Capture remain available too.
 - **Auto-reconnect** with bonding (no re-pairing after the first time).
 - **Desktop launchers** on Bazzite for first-time setup and pairing (no terminal
   or Decky plugin required).
@@ -75,8 +79,8 @@ Key design choices:
   connection initiation at a time, so the bridge serializes connects behind a
   lock — the fix for "only one of my two controllers wakes up."
 - **Standard `uinput` layout.** The virtual pad uses the conventional
-  Xbox-style evdev button positions so Steam Input and SDL map A/B/X/Y to the
-  printed labels with no custom database entry required.
+  Xbox-style evdev button codes, with X/Y swapped for Pro Controller 2.
+  The NSO GameCube and experimental Joy-Con 2 layouts are unchanged.
 
 ## Requirements
 
@@ -89,7 +93,7 @@ Key design choices:
 ## Install
 
 ```bash
-git clone https://github.com/trevlars/switch2-controllers-linux.git ~/nso-gc-bazzite
+git clone https://github.com/BloodotakuZ/switch2-controllers-linux.git ~/nso-gc-bazzite
 cd ~/nso-gc-bazzite
 bash scripts/install.sh
 ```
@@ -132,6 +136,34 @@ python -m ngc list          # show paired controllers
 python -m ngc run           # foreground bridge (service uses this)
 journalctl --user -u nso-gc.service -f   # live logs
 ```
+
+## Bluetooth button mapping in this fork
+
+The default Pro Controller 2 virtual gamepad swaps X and Y. A/B, sticks, and shoulders keep their existing mappings.
+
+| Physical button | Linux input |
+| --- | --- |
+| X | `BTN_NORTH` (gamepad Y) |
+| Y | `BTN_WEST` (gamepad X) |
+| C | `BTN_C` |
+| Capture | `BTN_Z` |
+| GL / GR | `BTN_TRIGGER_HAPPY1` / `BTN_TRIGGER_HAPPY2` |
+
+GL/GR are separate inputs, not copies of other buttons. Bind them in an
+application that accepts extra joystick buttons. The optional SDL database
+maps GR/GL to paddle1/paddle2, C to misc1, and Capture to misc2; support for
+these extended SDL slots depends on the application's SDL version.
+
+After updating an existing checkout, restart `nso-gc.service` and wake the pad
+to recreate its virtual device. If you use the optional emulator integration,
+rerun `scripts/install-emulator-integration.sh` with the pad connected to refresh
+its SDL mapping. An existing nonempty `button_map` in
+`~/.config/nso-gc/config.json` replaces the defaults; use `{}` for this fork's
+defaults or add the extra buttons to your custom map.
+
+These changes affect the Pro Controller 2 Bluetooth uinput gamepad.
+The NSO GameCube and Joy-Con 2 mappings and the DSU motion server's original button layout are unchanged. DSU has no
+standard GL/GR button slots; use uinput for the extra buttons and DSU for motion.
 
 ## Gyro / motion (DSU)
 

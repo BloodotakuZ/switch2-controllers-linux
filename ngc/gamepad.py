@@ -36,7 +36,8 @@ TRIGGER_MIN, TRIGGER_MAX = 0, 255
 # Switch-style layouts, ZL+ L -> BTN_TL (left bumper) and Z+ R click -> BTN_TR
 # (right bumper). C -> BTN_SELECT (minus). Analog L/R stay on trigger axes.      #
 #                                                                             #
-# Face buttons use semantic evdev positions (A=SOUTH, B=EAST, X=WEST, Y=NORTH).
+# Pro face buttons use A=SOUTH, B=EAST, X=NORTH, Y=WEST.
+# GL/GR use independent extra gamepad key codes.
 # BTN_C (306) sits between B and the face cluster, so SDL's auto gamecontrollerdb
 # assigns x:b3/y:b4 to the wrong indices — install-emulator-integration.sh writes
 # a corrected mapping for Steam. Dolphin uses WEST/NORTH tokens directly.
@@ -48,8 +49,8 @@ TRIGGER_MIN, TRIGGER_MAX = 0, 255
 PRO_BUTTON_MAP = {
     "A": e.BTN_SOUTH,
     "B": e.BTN_EAST,
-    "X": e.BTN_WEST,
-    "Y": e.BTN_NORTH,
+    "X": e.BTN_NORTH,
+    "Y": e.BTN_WEST,
     "L": e.BTN_TL,
     "R": e.BTN_TR,
     "ZL": e.BTN_TL2,
@@ -61,7 +62,15 @@ PRO_BUTTON_MAP = {
     "C": e.BTN_C,
     "L_STK": e.BTN_THUMBL,
     "R_STK": e.BTN_THUMBR,
+    "GL": e.BTN_TRIGGER_HAPPY1,
+    "GR": e.BTN_TRIGGER_HAPPY2,
 }
+
+# Preserve the experimental Joy-Con layout; this fork customizes Pro only.
+JOYCON_BUTTON_MAP = {
+    name: code for name, code in PRO_BUTTON_MAP.items() if name not in {"GL", "GR"}
+}
+JOYCON_BUTTON_MAP.update(X=e.BTN_WEST, Y=e.BTN_NORTH)
 
 # ZL/Z and L/R click share shoulder slots so Steam and emulators see standard bumpers.
 GAMECUBE_BUTTON_MAP = {
@@ -89,6 +98,8 @@ def button_map_for_product(product_id: int) -> dict:
     """Return the default evdev map for a Switch 2 controller PID."""
     if product_id == P.NSO_GAMECUBE_PID:
         return GAMECUBE_BUTTON_MAP
+    if product_id in {P.JOYCON2_LEFT_PID, P.JOYCON2_RIGHT_PID}:
+        return JOYCON_BUTTON_MAP
     return PRO_BUTTON_MAP
 
 

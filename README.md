@@ -85,7 +85,8 @@ Key design choices:
 ## Requirements
 
 - Linux with a Bluetooth LE adapter
-- Python 3.12+
+- Python 3.12 (exactly: `bleak==0.22.2` does not install on 3.13+; if your
+  distro ships a newer Python, get 3.12 via `uv`, `mise` or `pyenv`)
 - `bleak==0.22.2` (BLE scanning during pairing) and `evdev>=1.6`
 - `/dev/uinput` writable by your user (Bazzite/most distros grant this via a
   udev ACL; otherwise add a udev rule)
@@ -164,6 +165,28 @@ defaults or add the extra buttons to your custom map.
 These changes affect the Pro Controller 2 Bluetooth uinput gamepad.
 The NSO GameCube and Joy-Con 2 mappings and the DSU motion server's original button layout are unchanged. DSU has no
 standard GL/GR button slots; use uinput for the extra buttons and DSU for motion.
+
+### Other desktops: let SDL apps see GL/GR
+
+Without a mapping, SDL generates a generic one for the virtual pad that drops
+GL, GR, C and Capture, so apps never see them even though the bridge sends
+them. Outside Bazzite/EmuDeck, nothing loads the mapping that
+`tools/sdl_guid.py` writes, so install it as a session environment variable:
+
+```bash
+mkdir -p ~/.config/environment.d
+cp system/environment.d/60-switch2-pro.conf ~/.config/environment.d/
+```
+
+Then **log out and back in**. Apps started from your desktop inherit the
+compositor's environment, which is only read at login, so restarting Steam or
+the emulator is not enough. Tested on Arch (Omarchy, Hyprland + uwsm) with
+Steam and PPSSPP 1.20.4. For a quick test without logging out, start an app with
+the variable set inline:
+
+```bash
+SDL_GAMECONTROLLERCONFIG="$(sed -n 's/^SDL_GAMECONTROLLERCONFIG=//p' system/environment.d/60-switch2-pro.conf)" PPSSPPSDL
+```
 
 ### Steam rear-button compatibility mode (experimental)
 
